@@ -4,15 +4,17 @@ Bitcoin brain wallet brute forcer written in Golang
 ### Overview
 gobrute is a high-performance Bitcoin brain wallet brute-forcing tool written in Go. It allows you to target and brute-force brain wallet addresses efficiently while providing options to scrape and verify wallet balances at an impressive speed.
 
-<img src="https://imgur.com/dRhX44H.png" alt="gobrute">
-<img src="https://imgur.com/iKIqQE9.png" alt="check"> 
 # Features
 - [x] --target scrape: Scrape brain wallet candidates.
 - [x] --target checkbalance: Verify wallet balances.
 - [x] --passwordlist: Password list
 - [x] Speed: Achieves up to 1,000 CPM.
 
-Commands
+
+<img src="https://imgur.com/dRhX44H.png" alt="gobrute">
+<img src="https://imgur.com/iKIqQE9.png" alt="check"> 
+
+# Commands
 ```
 
 gobrute --target scrape --passwordlist password_list.txt (Will make a private_keys.json, with the password & address & private key) 
