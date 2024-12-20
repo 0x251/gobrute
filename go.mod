@@ -1,6 +1,6 @@
 module l4tt/gobrute
 
-go 1.23.4
+go 1.23
 
 require (
 	github.com/btcsuite/btcd v0.20.1-beta // indirect

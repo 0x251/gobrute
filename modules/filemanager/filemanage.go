@@ -3,13 +3,12 @@ package filemanager
 import (
 	"bufio"
 	"encoding/json"
-	"os"
 	"l4tt/gobrute/modules/logger"
-
+	"os"
 )
 
 func ReadFile(filename string) ([]string, error) {
-	logger.Log("Reading file: "+filename, false)
+	logger.Log("Reading file: [\033[34m"+filename+"\033[0m]", false)
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, err
@@ -26,6 +25,7 @@ func ReadFile(filename string) ([]string, error) {
 
 	return lines, nil
 }
+
 func WriteFile(filename string, lines []string) error {
 	file, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
@@ -47,19 +47,45 @@ func WriteFile(filename string, lines []string) error {
 }
 
 func ReadJSON(filename string) ([]interface{}, error) {
-	jsonData, err := os.ReadFile(filename)
+	file, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
+	defer file.Close()
+
+	decoder := json.NewDecoder(bufio.NewReader(file))
 	var data []interface{}
-	err = json.Unmarshal(jsonData, &data)
-	if err != nil {
+	if err := decoder.Decode(&data); err != nil {
 		return nil, err
 	}
 	return data, nil
 }
 
-
 func DeleteFile(filename string) error {
 	return os.Remove(filename)
+}
+
+func AppendToFile(filename string, data string) error {
+	file, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	_, err = file.WriteString(data)
+	return err
+}
+
+func WritePassword(filename string, data []string) error {
+	file, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	for _, line := range data {
+		_, err = file.WriteString(line + "\n")
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

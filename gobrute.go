@@ -1,51 +1,91 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	"os"
-	"l4tt/gobrute/modules/scraper"
-	"l4tt/gobrute/modules/error"
-	"l4tt/gobrute/modules/logger"
 	"l4tt/gobrute/modules/check_balance"
+	"l4tt/gobrute/modules/error"
+	"l4tt/gobrute/modules/generator"
+	"l4tt/gobrute/modules/logger"
+	"l4tt/gobrute/modules/scraper"
 )
 
-
 func main() {
-	args := os.Args
-	args_list := []string{"--help", "--target", "--passwordlist"}
-	target_list := []string{"checkbalance", "scrape"}
+	target := flag.String("target", "", "Specify the target [checkbalance, scrape, localcheck, generate]")
+	passwordList := flag.String("passwordlist", "", "Specify the password list file")
+	threads := flag.Int("threads", 10, "Number of concurrent threads (0-150)")
+	addressList := flag.String("addresslist", "", "Specify the address list file")
+	help := flag.Bool("help", false, "Display help")
+	generate := flag.Bool("generate", false, "Generate a password list")
+	random := flag.Bool("random", false, "Generate a random password list")
+	multiWord := flag.Bool("multi-word", false, "Generate a multi-word password list")
+	count := flag.Int("count", 100, "Number of passwords to generate")
+	filename := flag.String("filename", "passwords.txt", "Filename to save the generated passwords")
 
+	flag.Parse()
 
-	if len(args) < 2 {
-		fmt.Println("Usage: gobrute --help")
+	if *random || *multiWord {
+		*generate = true
+	}
+
+	if *help || *target == "" {
+		fmt.Println(`
+		╔════════════════════════════════════════════════╗
+		║ Usage: gobrute 1.0.1                            ║
+		║                                                ║
+		║ Options:                                       ║
+		║   --target [checkbalance, scrape, localcheck, generate]  ║
+		║   --passwordlist [dictionary]                  ║
+		║   --threads [number]                           ║
+		║   --addresslist [address list file]           ║
+		║   --generate                                   ║
+		║   --random                                     ║
+		║   --multi-word                                 ║
+		║   --count [number]                             ║
+		║   --filename [filename]                        ║
+		╚════════════════════════════════════════════════╝
+		`)
 		return
 	}
 
-	if args[1] == args_list[0] {
-		fmt.Println(`
-		╔══════════════════════════════════════════════╗
-		║ Usage: gobrute 1.0.0                         ║
-		║                                              ║
-		║ Options:                                     ║
-		║   --target [checkbalance, scrape]            ║
-		║   --passwordlist [dictionary]                ║
-		╚══════════════════════════════════════════════╝
-		`)
-	}
-	if args[1] == args_list[1] {
-		if args[2] == target_list[0] {
-			logger.Log("Target: " + args[2], false)
-			check_balance.CheckBalance()
-		} else if args[2] == target_list[1] {
-			if len(args) > 3 {
-				scraper.Scrape(args[2], args[4])
-			} else {
-				error.ErrorHandler("Password list not specified")
-			}
-		} else {
-			error.ErrorHandler("Invalid target specified")
+	switch *target {
+	case "checkbalance":
+		if *threads <= 0 {
+			*threads = 10
 		}
+
+		if *threads > 150 {
+			logger.Log("Too many concurrent threads, please use a lower number, max 150", true)
+			return
+		}
+
+		check_balance.CheckBalance(*threads)
+	case "scrape":
+		if *passwordList == "" {
+			error.ErrorHandler("Password list not specified, please use --passwordlist [dictionary].txt")
+			return
+		}
+		scraper.Scrape(*target, *passwordList)
+	case "localcheck":
+		if *addressList == "" {
+			error.ErrorHandler("Address list not specified, please use --addresslist [address list file].txt")
+			return
+		}
+		scraper.LocalCheck(*addressList)
+	case "generate":
+		if !*generate {
+			error.ErrorHandler("Generate flag not set. Use --random or --multi-word to generate passwords.")
+			return
+		}
+
+		if *random {
+			generator.GeneratePasswords(true, false, *count, *filename)
+		} else if *multiWord {
+			generator.GeneratePasswords(false, true, *count, *filename)
+		} else {
+			error.ErrorHandler("Specify generation type: --random or --multi-word")
+		}
+	default:
+		error.ErrorHandler("Invalid target specified, please use --target [checkbalance, scrape, localcheck, generate]")
 	}
 }
-
-

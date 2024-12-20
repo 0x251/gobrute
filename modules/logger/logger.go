@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 )
+
 func Log(message string, warning bool) {
 	if warning {
 		fmt.Printf("\033[33m[%s] GoBrute Warning: %s\033[0m\n", time.Now().Format("2006-01-02 15:04:05"), message)
@@ -12,6 +13,7 @@ func Log(message string, warning bool) {
 	}
 }
 
-func UpdateStatus(passwords int, left int) {
-	fmt.Printf("\033[34m[ Passwords: %d ] %% [ Left: %d ]\033[0m\033[K", passwords, left)
+func Status(message string) {
+	fmt.Printf("\r\033[K%s", message)
+	fmt.Print("\r")
 }

@@ -1,17 +1,20 @@
 package scraper
 
 import (
-	"fmt"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/sha256"
-	"math/big"
-	"l4tt/gobrute/modules/logger"
-	"l4tt/gobrute/modules/filemanager"
 	"encoding/json"
-	"golang.org/x/crypto/ripemd160"
+	"fmt"
+	"l4tt/gobrute/modules/filemanager"
+	"l4tt/gobrute/modules/logger"
+	"math/big"
+	"time"
+
 	"github.com/btcsuite/btcd/btcec"
+	"golang.org/x/crypto/ripemd160"
 )
+
 func Scrape(target string, passwordlist string) {
 	passwords, err := filemanager.ReadFile(passwordlist)
 	if err != nil {
@@ -19,43 +22,63 @@ func Scrape(target string, passwordlist string) {
 		return
 	}
 
+	totalPasswords := len(passwords)
 	data := map[string]interface{}{
-		"count": len(passwords),
-		"keys":  []map[string]interface{}{},
+		"count": totalPasswords,
+		"keys":  make(map[string]interface{}, totalPasswords),
 	}
 
-	filemanager.DeleteFile("private_keys.json")
+	filemanager.DeleteFile("results/private_keys.json")
 
-	for _, password := range passwords {
+	keysMap := data["keys"].(map[string]interface{})
+
+	startTime := time.Now()
+
+	for i, password := range passwords {
 		privateKey, err := from_passphrase(password)
-		
 		if err != nil {
 			logger.Log("Error generating private key: "+err.Error(), true)
 			continue
 		}
+
 		pubKey := elliptic.Marshal(privateKey.PublicKey.Curve, privateKey.PublicKey.X, privateKey.PublicKey.Y)
 		pubKeyHash := hash160(pubKey)
 		address := base58CheckEncode(pubKeyHash, 0x00)
 
-		data["count"] = len(passwords)
-		data["keys"] = append(data["keys"].([]map[string]interface{}), map[string]interface{}{
+		keysMap[fmt.Sprintf("key_%d", i)] = map[string]interface{}{
 			"private_key": fmt.Sprintf("%x", privateKey.D.Bytes()),
 			"password":    password,
 			"public_key":  fmt.Sprintf("%x", pubKey),
 			"address":     address,
-		})
+		}
+
+		remainingPasswords := totalPasswords - (i + 1)
+
+		if remainingPasswords%100 == 0 || remainingPasswords < 100000000 {
+			elapsed := time.Since(startTime)
+			processed := i + 1
+			var ttc time.Duration
+			if processed > 0 {
+				averageTime := elapsed / time.Duration(processed)
+				ttc = averageTime * time.Duration(remainingPasswords)
+			} else {
+				ttc = 0
+			}
+			logger.Status(fmt.Sprintf("Total: [\033[34m%d\033[0m], Remaining: [\033[34m%d\033[0m], TTC: [\033[35m%s\033[0m]", totalPasswords, remainingPasswords, ttc.Round(time.Second)))
+		}
 	}
 
 	jsonData, _ := json.MarshalIndent(data, "", "  ")
-	if len(passwords) > 10 {
+	if totalPasswords > 10 {
 		logger.Log("Data compressed to not spam the console", false)
 	} else {
 		logger.Log(string(jsonData), false)
 	}
 
-	logger.Log("Saved to private_keys.json", false)
-	filemanager.WriteFile("private_keys.json", []string{string(jsonData)})
+	logger.Log("Saved to [\033[34mresults/private_keys.json\033[0m]", false)
+	filemanager.WriteFile("results/private_keys.json", []string{string(jsonData)})
 }
+
 func from_passphrase(passphrase string) (*ecdsa.PrivateKey, error) {
 	hash := sha256.Sum256([]byte(passphrase))
 
@@ -109,5 +132,3 @@ func base58Encode(input []byte) string {
 
 	return string(result)
 }
-
-
